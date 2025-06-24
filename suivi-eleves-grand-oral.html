@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Tableau Élèves</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: center;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+    .active-row {
+      background-color: #ffeeba;
+    }
+    .controls {
+      margin: 10px 0;
+    }
+    .paused-indicator {
+      color: red;
+      font-weight: bold;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h2>Suivi des élèves</h2>
+
+  <div class="controls">
+    <button onclick="ajouterLigne()">Ajouter une ligne</button>
+    <button onclick="toggleOptions()">Afficher/Masquer les options</button>
+    <span class="paused-indicator" id="pausedIndicator">⏸️ Mise à jour suspendue pendant l'édition</span>
+    <div id="options" style="display:none; margin-top:10px;">
+      <input type="file" accept=".csv" onchange="importerCSV(event)">
+    </div>
+  </div>
+
+  <table id="elevesTable">
+    <thead>
+      <tr>
+        <th>Salle</th>
+        <th>Nom</th>
+        <th>Prénom</th>
+        <th>Heure de passage</th>
+        <th>Heure d'entrée</th>
+        <th>Heure de fin</th>
+        <th>Temps restant</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td contenteditable="true">A101</td>
+        <td contenteditable="true">Dupont</td>
+        <td contenteditable="true">Jean</td>
+        <td contenteditable="true">08:00</td>
+        <td contenteditable="true">08:10</td>
+        <td>08:30</td>
+        <td>--</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <script>
+  let isEditing = false;
+
+  function updateDecomptes() {
+    if (isEditing) return;
+    const now = new Date();
+    const tbody = document.querySelector('#elevesTable tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+
+    const validRows = [];
+    const otherRows = [];
+
+    for (const row of rows) {
+      row.classList.remove('active-row');
+      const finTxt = row.cells[5]?.textContent.trim();
+
+      if (/^\d{2}:\d{2}$/.test(finTxt)) {
+        const [h, m] = finTxt.split(':').map(Number);
+        const fin = new Date();
+        fin.setHours(h, m, 0, 0);
+        const diff = fin - now;
+
+        if (diff <= 0) {
+          row.cells[6].textContent = 'FINI';
+        } else {
+          const min = Math.floor(diff / 60000);
+          const sec = Math.floor((diff % 60000) / 1000);
+          row.cells[6].textContent = `${min} min ${sec.toString().padStart(2, '0')}s`;
+        }
+
+        row.classList.add('active-row');
+        validRows.push({ row, timestamp: h * 60 + m });
+      } else {
+        otherRows.push(row);
+      }
+    }
+
+    validRows.sort((a, b) => a.timestamp - b.timestamp);
+
+    tbody.innerHTML = '';
+    validRows.forEach(item => tbody.appendChild(item.row));
+    otherRows.forEach(row => tbody.appendChild(row));
+  }
+
+  function ajouterLigne() {
+    const tbody = document.querySelector('#elevesTable tbody');
+    const tr = document.createElement('tr');
+    for (let i = 0; i < 7; i++) {
+      const td = document.createElement('td');
+      td.contentEditable = i < 5 ? 'true' : 'false';
+      if (i === 6) td.textContent = '--';
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+    bindEditListeners(tr);
+  }
+
+  function toggleOptions() {
+    const opt = document.getElementById('options');
+    opt.style.display = opt.style.display === 'none' ? 'block' : 'none';
+  }
+
+  function importerCSV(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const lines = e.target.result.split(/\r?\n/);
+      const tbody = document.querySelector('#elevesTable tbody');
+      lines.forEach(line => {
+        if (!line.trim()) return;
+        const data = line.split(',');
+        const tr = document.createElement('tr');
+        for (let i = 0; i < 7; i++) {
+          const td = document.createElement('td');
+          td.textContent = data[i] || (i < 5 ? '' : '--');
+          if (i < 5) td.contentEditable = 'true';
+          tr.appendChild(td);
+        }
+        tbody.appendChild(tr);
+        bindEditListeners(tr);
+      });
+    };
+    reader.readAsText(file);
+  }
+
+  function bindEditListeners(row) {
+    const indicator = document.getElementById('pausedIndicator');
+    for (let i = 0; i < 5; i++) {
+      const cell = row.cells[i];
+      cell.addEventListener('focus', () => {
+        isEditing = true;
+        indicator.style.display = 'inline';
+      });
+      cell.addEventListener('blur', () => {
+        isEditing = false;
+        indicator.style.display = 'none';
+      });
+      cell.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          cell.blur();
+        }
+      });
+    }
+  }
+
+  // Initial binding
+  document.querySelectorAll('#elevesTable tbody tr').forEach(bindEditListeners);
+  setInterval(updateDecomptes, 1000);
+  </script>
+</body>
+</html>
