@@ -1,2 +1,42 @@
-# suivi-eleves-grand-oral
-Tableau interactif en HTML/JS pour suivre en temps réel le passage des élèves au Grand Oral : heure d’entrée, heure de fin, temps restant, import CSV, insertion horodatée, et personnalisation des durées.
+# Suivi des élèves – Grand Oral
+
+Un tableau interactif en HTML, CSS et JavaScript pour gérer le **passage des élèves au Grand Oral**, conçu pour fonctionner **hors ligne** (aucune donnée envoyée sur un serveur) et **sans dépendance externe**.
+
+## ✨ Fonctionnalités
+
+* ⏱️ Insertion automatique de l'heure d'entrée (avec calcul automatique de l'heure de fin)
+* 📅 Import de données via **CSV** ou **copier-coller**
+* 🖊️ Modification manuelle possible des colonnes : salle, nom, prénom, heure de passage, heure d’entrée
+* 🔄 Décompte automatique du temps restant
+* 🔧 Durée par défaut réglable et personnalisable par ligne
+* 🔃 Suspension automatique des mises à jour pendant l’édition
+* 📌 Lignes actives affichées en haut, triées par temps restant
+* 📂 Fonctionne entièrement dans un navigateur sans connexion
+
+## 🖼️ Capture d’écran
+
+![Aperçu du tableau de suivi](https://via.placeholder.com/800x400.png?text=Capture+à+insérer+ici)
+
+> *(Remplace le lien ci-dessus par une vraie capture après publication.)*
+
+## 📄 Format CSV attendu
+
+| Salle | Nom | Prénom | Heure de passage (HH\:MM) | Heure d'entrée (HH\:MM\:SS, optionnelle) |
+| ----- | --- | ------ | ------------------------- | ---------------------------------------- |
+
+Chaque ligne peut ensuite être enrichie via l’interface web.
+
+## 🔧 Utilisation
+
+1. Ouvrir le fichier `index.html` dans un navigateur moderne (Chrome, Firefox…).
+2. Coller vos données ou importer un fichier `.csv` dans la section ⚙️.
+3. Utilisez les boutons :
+
+   * 🕒 pour horodater l’entrée
+   * ➕ pour ajouter une ligne
+   * ❌ pour supprimer une ligne
+4. Le tableau se met à jour automatiquement, sauf lors de l’édition.
+
+## ✅ Licence
+
+Distribué sous licence [MIT](LICENSE).
