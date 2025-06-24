@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Tableau Élèves</title>
+  <title>Suivi des élèves</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -25,12 +25,15 @@
       background-color: #ffeeba;
     }
     .controls {
-      margin: 10px 0;
+      margin-bottom: 10px;
     }
     .paused-indicator {
       color: red;
       font-weight: bold;
       display: none;
+    }
+    .options {
+      margin-top: 10px;
     }
   </style>
 </head>
@@ -38,12 +41,25 @@
   <h2>Suivi des élèves</h2>
 
   <div class="controls">
-    <button onclick="ajouterLigne()">Ajouter une ligne</button>
-    <button onclick="toggleOptions()">Afficher/Masquer les options</button>
+    <button onclick="toggleOptions()">⚙️</button>
     <span class="paused-indicator" id="pausedIndicator">⏸️ Mise à jour suspendue pendant l'édition</span>
-    <div id="options" style="display:none; margin-top:10px;">
-      <input type="file" accept=".csv" onchange="importerCSV(event)">
-    </div>
+  </div>
+
+  <div id="options" class="options" style="display: none;">
+    <p><i>par FlorianTobé</i> - <a href="maths974.fr">Maths974.fr</a></p>
+
+    <p>Format attendu du fichier CSV ou du collage :</p>
+    <ul>
+      <li><strong>Colonne 1 :</strong> Salle</li>
+      <li><strong>Colonne 2 :</strong> Nom</li>
+      <li><strong>Colonne 3 :</strong> Prénom</li>
+      <li><strong>Colonne 4 :</strong> Heure de passage (format HH:MM)</li>
+      <li><strong>Colonne 5 :</strong> Heure d'entrée (format HH:MM:SS, peut être vide)</li>
+    </ul>
+    <textarea id="pasteZone" rows="4" cols="100" placeholder="Copiez-collez ici les données CSV..."></textarea><br>
+    <button onclick="importerDepuisZone()">Importer</button>
+    <input type="file" accept=".csv" onchange="importerCSV(event)"><br><br>
+    <label>Durée par défaut (minutes) : <input type="number" id="defaultDuration" value="20" min="1"></label>
   </div>
 
   <table id="elevesTable">
@@ -56,76 +72,71 @@
         <th>Heure d'entrée</th>
         <th>Heure de fin</th>
         <th>Temps restant</th>
+        <th>Actions</th>
       </tr>
     </thead>
-    <tbody>
-      <tr>
-        <td contenteditable="true">A101</td>
-        <td contenteditable="true">Dupont</td>
-        <td contenteditable="true">Jean</td>
-        <td contenteditable="true">08:00</td>
-        <td contenteditable="true">08:10</td>
-        <td>08:30</td>
-        <td>--</td>
-      </tr>
-    </tbody>
+    <tbody></tbody>
   </table>
 
   <script>
   let isEditing = false;
 
-  function updateDecomptes() {
-    if (isEditing) return;
-    const now = new Date();
-    const tbody = document.querySelector('#elevesTable tbody');
-    const rows = Array.from(tbody.querySelectorAll('tr'));
-
-    const validRows = [];
-    const otherRows = [];
-
-    for (const row of rows) {
-      row.classList.remove('active-row');
-      const finTxt = row.cells[5]?.textContent.trim();
-
-      if (/^\d{2}:\d{2}$/.test(finTxt)) {
-        const [h, m] = finTxt.split(':').map(Number);
-        const fin = new Date();
-        fin.setHours(h, m, 0, 0);
-        const diff = fin - now;
-
-        if (diff <= 0) {
-          row.cells[6].textContent = 'FINI';
-        } else {
-          const min = Math.floor(diff / 60000);
-          const sec = Math.floor((diff % 60000) / 1000);
-          row.cells[6].textContent = `${min} min ${sec.toString().padStart(2, '0')}s`;
-        }
-
-        row.classList.add('active-row');
-        validRows.push({ row, timestamp: h * 60 + m });
-      } else {
-        otherRows.push(row);
-      }
-    }
-
-    validRows.sort((a, b) => a.timestamp - b.timestamp);
-
-    tbody.innerHTML = '';
-    validRows.forEach(item => tbody.appendChild(item.row));
-    otherRows.forEach(row => tbody.appendChild(row));
-  }
-
-  function ajouterLigne() {
-    const tbody = document.querySelector('#elevesTable tbody');
+  function ajouterLigne(donnees = [], referenceBtn = null) {
     const tr = document.createElement('tr');
     for (let i = 0; i < 7; i++) {
       const td = document.createElement('td');
       td.contentEditable = i < 5 ? 'true' : 'false';
-      if (i === 6) td.textContent = '--';
+      td.textContent = donnees[i] || (i < 5 ? '' : '--');
       tr.appendChild(td);
     }
-    tbody.appendChild(tr);
+    const tdActions = document.createElement('td');
+    tdActions.innerHTML = `
+      <button onclick="remplirHeureEntree(this)">🕒</button>
+      <input type="number" value="20" min="1" style="width: 50px" onchange="this.dataset.duration = this.value" data-duration="20">
+      <button onclick="supprimerLigne(this)">❌</button>
+      <button onclick="ajouterLigne([], this)">➕</button>`;
+    tr.appendChild(tdActions);
+
+    const tbody = document.querySelector('#elevesTable tbody');
+    if (referenceBtn) {
+      const refRow = referenceBtn.closest('tr');
+      tbody.insertBefore(tr, refRow.nextSibling);
+    } else {
+      tbody.appendChild(tr);
+    }
+
     bindEditListeners(tr);
+  }
+
+  function remplirHeureEntree(btn) {
+    const row = btn.closest('tr');
+    const now = new Date();
+    if (now.getSeconds() > 0) now.setMinutes(now.getMinutes() + 1);
+    now.setSeconds(0, 0);
+    const entree = now.toTimeString().substring(0, 8);
+    row.cells[4].textContent = entree;
+    mettreAJourHeureDeFin(row);
+  }
+
+  function mettreAJourHeureDeFin(row) {
+    const entreeTxt = row.cells[4].textContent.trim();
+    const input = row.cells[7].querySelector('input');
+    const minutes = parseInt(input?.dataset.duration || input?.value || document.getElementById('defaultDuration').value || 20);
+
+    if (/^\d{2}:\d{2}:\d{2}$/.test(entreeTxt)) {
+      const [h, m, s] = entreeTxt.split(':').map(Number);
+      const entreeDate = new Date();
+      entreeDate.setHours(h, m, s, 0);
+      const fin = new Date(entreeDate.getTime() + minutes * 60000);
+      const finH = fin.getHours().toString().padStart(2, '0');
+      const finM = fin.getMinutes().toString().padStart(2, '0');
+      const finS = fin.getSeconds().toString().padStart(2, '0');
+      row.cells[5].textContent = `${finH}:${finM}:${finS}`;
+    }
+  }
+
+  function supprimerLigne(btn) {
+    btn.closest('tr').remove();
   }
 
   function toggleOptions() {
@@ -133,25 +144,25 @@
     opt.style.display = opt.style.display === 'none' ? 'block' : 'none';
   }
 
+  function importerDepuisZone() {
+    const text = document.getElementById('pasteZone').value.trim();
+    if (!text) return;
+    const lignes = text.split(/\r?\n/);
+    lignes.forEach(l => {
+      const donnees = l.split(',');
+      ajouterLigne(donnees);
+    });
+  }
+
   function importerCSV(event) {
     const file = event.target.files[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = function(e) {
-      const lines = e.target.result.split(/\r?\n/);
-      const tbody = document.querySelector('#elevesTable tbody');
-      lines.forEach(line => {
-        if (!line.trim()) return;
-        const data = line.split(',');
-        const tr = document.createElement('tr');
-        for (let i = 0; i < 7; i++) {
-          const td = document.createElement('td');
-          td.textContent = data[i] || (i < 5 ? '' : '--');
-          if (i < 5) td.contentEditable = 'true';
-          tr.appendChild(td);
-        }
-        tbody.appendChild(tr);
-        bindEditListeners(tr);
+      const lignes = e.target.result.split(/\r?\n/);
+      lignes.forEach(l => {
+        const donnees = l.split(',');
+        ajouterLigne(donnees);
       });
     };
     reader.readAsText(file);
@@ -168,6 +179,7 @@
       cell.addEventListener('blur', () => {
         isEditing = false;
         indicator.style.display = 'none';
+        if (i === 4) mettreAJourHeureDeFin(row);
       });
       cell.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
@@ -178,8 +190,44 @@
     }
   }
 
-  // Initial binding
-  document.querySelectorAll('#elevesTable tbody tr').forEach(bindEditListeners);
+  function updateDecomptes() {
+    if (isEditing) return;
+    const now = new Date();
+    const tbody = document.querySelector('#elevesTable tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+
+    const validRows = [];
+    const otherRows = [];
+
+    for (const row of rows) {
+      row.classList.remove('active-row');
+      const finTxt = row.cells[5]?.textContent.trim();
+      if (/^\d{2}:\d{2}:\d{2}$/.test(finTxt)) {
+        const [h, m, s] = finTxt.split(':').map(Number);
+        const fin = new Date();
+        fin.setHours(h, m, s, 0);
+        const diff = fin - now;
+
+        if (diff <= 0) {
+          row.cells[6].textContent = 'FINI';
+        } else {
+          const min = Math.floor(diff / 60000);
+          const sec = Math.floor((diff % 60000) / 1000);
+          row.cells[6].textContent = `${min} min ${sec.toString().padStart(2, '0')}s`;
+        }
+        row.classList.add('active-row');
+        validRows.push({ row, timestamp: h * 3600 + m * 60 + s });
+      } else {
+        otherRows.push(row);
+      }
+    }
+
+    validRows.sort((a, b) => a.timestamp - b.timestamp);
+    tbody.innerHTML = '';
+    validRows.forEach(item => tbody.appendChild(item.row));
+    otherRows.forEach(row => tbody.appendChild(row));
+  }
+
   setInterval(updateDecomptes, 1000);
   </script>
 </body>
