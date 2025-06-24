@@ -14,10 +14,7 @@ Un tableau interactif en HTML, CSS et JavaScript pour gérer le **passage des é
 * 📂 Fonctionne entièrement dans un navigateur sans connexion
 
 ## 🖼️ Capture d’écran
-
-![Aperçu du tableau de suivi](https://via.placeholder.com/800x400.png?text=Capture+à+insérer+ici)
-
-> *(Remplace le lien ci-dessus par une vraie capture après publication.)*
+![Capture d’écran du 2025-06-24 11-53-23](https://github.com/user-attachments/assets/0812325e-d97c-42a7-85db-6a0b58dbc492)
 
 ## 📄 Format CSV attendu
 
